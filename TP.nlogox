@@ -2,7 +2,6 @@
 <model version="NetLogo 7.0.0" snapToGrid="true">
   <code>turtles-own [energy]
 firefighters-own [capacity]
-patches-own [category]
 
 breed [firefighters firefighter]
 breed [victims victim]
@@ -35,7 +34,6 @@ end
 
 to setup-patches
   ask patches [
-    set category "transitavel"
     set pcolor black
   ]
 end</code>
