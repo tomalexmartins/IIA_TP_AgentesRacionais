@@ -1,13 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <model version="NetLogo 7.0.0" snapToGrid="true">
-  <code>turtles-own [energy]
-firefighters-own [capacity]
+  <code><![CDATA[turtles-own [energy dead?]
+
+; carrying-victims - lista de vítimas que cada bombeiro está a transportar
+; capacity - capacidade máxima de transporte dos bombeiros
+firefighters-own [carrying-victims capacity] 
+
+; rescued? - se a vítima foi salva
+; dead?  - se vítima morreu
+victims-own [rescued?]
 
 breed [firefighters firefighter]
 breed [victims victim]
 
 to setup
   clear-all
+  reset-ticks
   ask patches [ set pcolor black ]
   setup-patches
   setup-firefighters
@@ -17,6 +25,9 @@ end
 to go
   firefighters-action
   victims-action
+  if count turtles = 0
+    [stop]
+  tick
 end
 
 to setup-firefighters
@@ -24,10 +35,11 @@ to setup-firefighters
   ask firefighters [
     set energy agents_energy
     set capacity firefighters_transport_capacity
+    set carrying-victims []
     set shape "person firefighter"
     set size 1.4
-    move-to one-of patches with [pcolor = black and not any? turtles-here]
     set color gray
+    move-to one-of patches with [pcolor = black and not any? turtles-here]
   ]
 end
 
@@ -35,6 +47,8 @@ to setup-victims
   create-victims num_victims
   ask victims [
     set energy agents_energy
+    set rescued? false
+    set dead? false
     set shape "person victim"
     set size 1.4
     move-to one-of patches with [pcolor = black and not any? turtles-here]
@@ -68,31 +82,85 @@ to setup-patches
 end
 
 to firefighters-action
+  ask firefighters [
+    if energy <= 0 [
+      foreach carrying-victims [ v ->
+        ask v [
+          show-turtle
+          move-to myself
+        ]
+      ]
+      set dead? true
+      hide-turtle
+    ]
+    
+    ; salvar vitimas e recarrega energia na zona segura
+    if pcolor = green [
+      if length carrying-victims > 0 [ 
+        foreach carrying-victims [ v ->
+          ask v [
+            set rescued? true
+            show-turtle
+            move-to one-of patches with [pcolor = green]
+          ]
+        ]
+        set carrying-victims []
+        set capacity firefighters_transport_capacity
+      ]
+      set energy min (list (energy + 1) 100) ; incrementa energia em 1 até ao max de 100
+    ]
+    
+    ; reabastecimento de energia com tanques
+    if pcolor = blue [
+      set energy energy + oxygen_tanks_energy
+    ]
+    
+    ; procura e apanha vítimas
+    if pcolor = black and any? victims-here and length carrying-victims < capacity [
+      let victimtocarry one-of victims-here
+      ask victimtocarry [ hide-turtle ]
+      set carrying-victims lput victimtocarry carrying-victims
+      set capacity capacity - 1
+    ]
+  ]
+end
+
+to firefighter-move
   
 end
 
 to victims-action
-  
-end</code>
+  ask victims [
+    if pcolor != green[
+      set energy energy - 1
+    ]
+    
+    if energy <= 0 [
+      set dead? true
+      hide-turtle]
+  ]
+end]]></code>
   <widgets>
     <view x="540" wrappingAllowedX="false" y="10" frameRate="30.0" minPycor="-16" height="434" showTickCounter="true" patchSize="13.0" fontSize="10" wrappingAllowedY="false" width="434" tickCounterLabel="ticks" maxPycor="16" updateMode="0" maxPxcor="16" minPxcor="-16"></view>
     <button x="10" actionKey="S" y="5" height="40" disableUntilTicks="false" forever="false" kind="Observer" width="61" display="Setup">setup</button>
-    <slider x="10" step="1" y="50" max="100" width="250" display="num_firefighters" height="50" min="1" direction="Horizontal" default="20.0" variable="num_firefighters"></slider>
-    <slider x="10" step="1" y="105" max="100" width="250" display="num_victims" height="50" min="1" direction="Horizontal" default="5.0" variable="num_victims"></slider>
+    <slider x="10" step="1" y="50" max="100" width="250" display="num_firefighters" height="50" min="1" direction="Horizontal" default="16.0" variable="num_firefighters"></slider>
+    <slider x="10" step="1" y="105" max="100" width="250" display="num_victims" height="50" min="1" direction="Horizontal" default="51.0" variable="num_victims"></slider>
     <button x="75" actionKey="G" y="5" height="40" disableUntilTicks="false" forever="true" kind="Observer" width="55" display="Go">go</button>
     <slider x="10" step="1" y="160" max="100" width="250" display="num_obstacles" height="50" min="0" direction="Horizontal" default="40.0" variable="num_obstacles"></slider>
     <slider x="10" step="1" y="215" max="100" width="250" display="num_oxygen_tanks" height="50" min="0" direction="Horizontal" default="15.0" variable="num_oxygen_tanks"></slider>
     <slider x="10" step="1" y="270" max="100" width="250" display="num_smoke" height="50" min="0" direction="Horizontal" default="20.0" variable="num_smoke"></slider>
     <slider x="10" step="1" y="325" max="100" width="250" display="agents_energy" height="50" min="0" direction="Horizontal" default="100.0" variable="agents_energy"></slider>
     <slider x="10" step="1" y="380" max="100" width="250" display="firefighters_transport_capacity" height="50" min="0" direction="Horizontal" default="100.0" variable="firefighters_transport_capacity"></slider>
-    <monitor x="1020" precision="17" y="20" height="60" fontSize="11" width="100" display="Bombeiros">count firefighters</monitor>
-    <monitor x="1125" precision="17" y="20" height="60" fontSize="11" width="100" display="Vitimas">count victims</monitor>
-    <monitor x="1020" precision="17" y="150" height="60" fontSize="11" width="100" display="Zona segura">count patches with [pcolor = green]</monitor>
-    <monitor x="1020" precision="17" y="215" height="60" fontSize="11" width="100" display="Fumo">count patches with [pcolor = gray]</monitor>
-    <monitor x="1020" precision="17" y="280" height="60" fontSize="11" width="100" display="Obstaculos">count patches with [pcolor = white]</monitor>
-    <monitor x="1125" precision="17" y="85" height="60" fontSize="11" width="100" display="Transitaveis">count patches with [pcolor = black]</monitor>
-    <monitor x="1020" precision="17" y="85" height="60" fontSize="11" width="100" display="Tanques">count patches with [pcolor = blue]</monitor>
+    <monitor x="1125" precision="17" y="20" height="60" fontSize="11" width="100" display="Vitimas Total">count victims</monitor>
     <slider x="10" step="1" y="435" max="100" width="250" display="oxygen_tanks_energy" height="50" min="0" direction="Horizontal" default="0.0" variable="oxygen_tanks_energy"></slider>
+    <monitor x="1230" precision="17" y="20" height="60" fontSize="11" width="100" display="Vitimas Salvas">count victims with [rescued?]</monitor>
+    <monitor x="1335" precision="17" y="20" height="60" fontSize="11" width="100" display="Vitimas Mortas">count victims with [dead?]</monitor>
+    <monitor x="1125" precision="17" y="85" height="60" fontSize="11" width="100" display="Bombeiros">count firefighters</monitor>
+    <monitor x="1020" precision="17" y="20" height="60" fontSize="11" width="100" display="Tanques">count patches with [pcolor = blue]</monitor>
+    <monitor x="1020" precision="17" y="85" height="60" fontSize="11" width="100" display="Zona segura">count patches with [pcolor = green]</monitor>
+    <monitor x="1020" precision="17" y="150" height="60" fontSize="11" width="100" display="Fumo">count patches with [pcolor = gray]</monitor>
+    <monitor x="1020" precision="17" y="215" height="60" fontSize="11" width="100" display="Obstaculos">count patches with [pcolor = white]</monitor>
+    <monitor x="1020" precision="17" y="280" height="60" fontSize="11" width="100" display="Transitaveis">count patches with [pcolor = black]</monitor>
   </widgets>
   <info>## WHAT IS IT?
 
