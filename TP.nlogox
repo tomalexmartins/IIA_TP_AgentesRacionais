@@ -135,30 +135,49 @@ end
 
 to firefighter-move
   ask firefighters [
+    ;; valor base da perceção
+    let vision 2
+
+    ;; se estiver em fumo, visão total reduzida
+    if pcolor = gray [
+      set vision 1
+    ]
+
+    ;; determina o patch à frente
     let ahead patch-ahead 1
-    ifelse traversable? ahead [
-      ;; seguir em frente (1 célula)
-      move-to ahead
-    ] [
-      ;; escolher melhor vizinho transitável (8 direções)
-      let opts neighbors with [pcolor != white]
-      if any? opts [
-        let best nobody
-        let best-cost 1e9
-        foreach sort opts [ p ->
-          let turn-cost abs subtract-headings heading (towards p)
-          let cost (turn-cost ^ 2) + random-float 0.01
-          if cost < best-cost [
-            set best p
-            set best-cost cost
-          ]
-        ]
-        if best != nobody [
-          set heading towards best
-          move-to best
-        ]
+
+    ;; se o patch à frente for fumo, ele não vê o que está por trás dele nessa direção
+    let visible-patches patches in-radius vision with [pcolor != white]
+    if ahead != nobody and [pcolor] of ahead = gray [
+      let ahead2 patch-ahead 2
+      if ahead2 != nobody [
+        ;; remove o patch atrás do fumo da lista de visíveis
+        set visible-patches visible-patches with [self != ahead2]
       ]
-      ;; se não houver vizinhos transitáveis, não mexe este tick
+    ]
+
+    ;; remove a própria posição
+    set visible-patches visible-patches with [self != myself]
+
+    ;; apenas patches transitáveis
+    set visible-patches visible-patches with [pcolor != white]
+
+    ;; tenta seguir em frente se possível
+    let best nobody
+    if traversable? ahead [
+      set best ahead
+    ] 
+    ;; se não pode seguir em frente, escolhe outro vizinho transitável
+    if best = nobody [
+      let adjacentes neighbors with [pcolor != white]
+      if any? adjacentes [
+        set best one-of adjacentes
+      ]
+    ]
+
+    if best != nobody [
+      face best
+      move-to best
     ]
   ]
 end
