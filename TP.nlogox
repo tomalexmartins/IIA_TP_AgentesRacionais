@@ -36,6 +36,7 @@ to setup-firefighters
     set energy agents_energy
     set capacity firefighters_transport_capacity
     set carrying-victims []
+    set dead? false
     set shape "person firefighter"
     set size 1.4
     set color gray
@@ -107,7 +108,7 @@ to firefighters-action
         set carrying-victims []
         set capacity firefighters_transport_capacity
       ]
-      set energy min (list (energy + 1) 100) ; incrementa energia em 1 até ao max de 100
+      set energy min (list (energy + 1) 100) ; incrementa energia em 1 até ao max de 100  //VERIFICAR SE ISTO ESTA CORRETO//
     ]
     
     ; reabastecimento de energia com tanques
@@ -155,12 +156,13 @@ end]]></code>
     <slider x="10" step="1" y="435" max="100" width="250" display="oxygen_tanks_energy" height="50" min="0" direction="Horizontal" default="0.0" variable="oxygen_tanks_energy"></slider>
     <monitor x="1230" precision="17" y="20" height="60" fontSize="11" width="100" display="Vitimas Salvas">count victims with [rescued?]</monitor>
     <monitor x="1335" precision="17" y="20" height="60" fontSize="11" width="100" display="Vitimas Mortas">count victims with [dead?]</monitor>
-    <monitor x="1125" precision="17" y="85" height="60" fontSize="11" width="100" display="Bombeiros">count firefighters</monitor>
+    <monitor x="1125" precision="17" y="85" height="60" fontSize="11" width="100" display="Bombeiros Total">count firefighters</monitor>
     <monitor x="1020" precision="17" y="20" height="60" fontSize="11" width="100" display="Tanques">count patches with [pcolor = blue]</monitor>
     <monitor x="1020" precision="17" y="85" height="60" fontSize="11" width="100" display="Zona segura">count patches with [pcolor = green]</monitor>
     <monitor x="1020" precision="17" y="150" height="60" fontSize="11" width="100" display="Fumo">count patches with [pcolor = gray]</monitor>
     <monitor x="1020" precision="17" y="215" height="60" fontSize="11" width="100" display="Obstaculos">count patches with [pcolor = white]</monitor>
     <monitor x="1020" precision="17" y="280" height="60" fontSize="11" width="100" display="Transitaveis">count patches with [pcolor = black]</monitor>
+    <monitor x="1230" precision="17" y="85" height="60" fontSize="11" width="100" display="Bombeiros Mortos">count firefighters with [dead?]</monitor>
   </widgets>
   <info>## WHAT IS IT?
 
