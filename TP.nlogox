@@ -83,12 +83,12 @@ end
 to firefighters-action
   ask firefighters [
     
-    ;; perde energia se não estiver numa zona segura ou recarrega energia num tanque
+    ;; ---- Perde energia fora das zonas verdes ou azuis ----
     if pcolor != green and pcolor != blue [
       set energy energy - 1
     ]
     
-    ;; morre se energia chegar a 0
+    ;; ---- Morre se energia chegar a 0 ----
     if energy <= 0 [
       foreach carrying-victims [ v ->
         ask v [
@@ -100,75 +100,74 @@ to firefighters-action
       set carrying-victims []
       set dead? true
       hide-turtle
+      stop
     ]
     
-    ; salva vitimas e recarrega energia na zona segura
-    if pcolor = green [
-      foreach carrying-victims [ v ->
-        ask v [
-          set rescued? true
-          set carrier nobody
-          show-turtle
-          move-to one-of patches with [pcolor = green]
+    ;; ---- Recarrega energia e entrega vítimas na zona segura ----
+    ifelse pcolor = green [
+      if energy < 100 [
+        set energy min list (energy + 5) 100
+      ]
+      if any? carrying-victims [
+        foreach carrying-victims [ v ->
+          ask v [
+            set rescued? true
+            set carrier nobody
+            show-turtle
+            move-to patch-here
+          ]
         ]
         set carrying-victims []
         set capacity firefighters_transport_capacity
       ]
-      set energy min (list (energy + 5) 100) 
-    ]
-    
-    ; reabastecimento de energia com tanques
-    if pcolor = blue [
-      set energy min (list (energy + oxygen_tanks_energy) 100)
-      set pcolor black
-    ]
-    
-    ; procura e apanha vítimas
-    if pcolor = black and length carrying-victims < capacity and capacity > 0 [
-      let victimtocarry one-of victims-here with [not dead? and not rescued? and carrier = nobody]
-      if victimtocarry != nobody [
-        ask victimtocarry [
-          hide-turtle
-          set carrier myself       
-        ]
-        set carrying-victims lput victimtocarry carrying-victims
-        set capacity capacity - 1
+      ;; Fica parado enquanto energia < 60
+      if energy < 60 [
+        stop
+      ]
+    ][
+      ;; ---- Recarrega energia em tanques ----
+      if pcolor = blue [
+        set energy min list (energy + oxygen_tanks_energy) 100
+        set pcolor black
       ]
     ]
-  ]
-  ;; anda
-  firefighter-move
-end
-
-to firefighter-move
-  ask firefighters [
+    
+    ;; ---- Movimento ----
     let vision 2
     if pcolor = gray [ set vision 1 ]
     
     let best-patch nobody
+    let target-victim nobody
     
-    ;; prioridade 1: se capacity = 0 ou energia baixa, vai para zona segura
-    if (capacity = 0) or (energy < 20) [
+    ;; prioridade 1: se capacidade cheia ou energia baixa, vai para zona segura
+    ifelse (capacity = 0 or energy < 20) [
       if any? patches with [pcolor = green] [
         set best-patch min-one-of patches with [pcolor = green] [distance myself]
       ]
-    ]
-    
-    ;; prioridade 2: Se estiver na zona segura, só sai quando tiver energia > 60 
-    if (pcolor = green) and (energy <= 60) [
-      set best-patch nobody  ;; fica parado a carregar
-    ]
-    
-    ;; prioridade 3: se houver vítima visível dentro do raio de visão
-    if best-patch = nobody and (capacity > 0) [
-      let visible-victims victims in-radius vision with [not dead? and not rescued? and carrier = nobody]
-      if any? visible-victims [
-         let nearest-victim min-one-of visible-victims [distance myself]
-        set best-patch [patch-here] of nearest-victim
+    ][
+      ;; prioridade 2: se houver vítima no patch atual e houver capacidade
+      if length carrying-victims < capacity [
+        let victim-here one-of victims-here with [not dead? and not rescued? and carrier = nobody]
+        if victim-here != nobody [
+          ask victim-here [
+            hide-turtle
+            set carrier myself
+          ]
+          set carrying-victims lput victim-here carrying-victims
+          set capacity capacity - 1
+        ]
+        ;; prioridade 3: procurar vítima visível no raio de visão
+        if best-patch = nobody [
+          let visible-victims victims in-radius vision with [not dead? and not rescued? and carrier = nobody]
+          if any? visible-victims [
+            set target-victim min-one-of visible-victims [distance myself]
+            set best-patch [patch-here] of target-victim
+          ]
+        ]
       ]
     ]
     
-    ;; prioridade 4: patch à frente (1 passo) se for seguro
+    ;; prioridade 4: move para patch à frente seguro apenas se não houver outro destino
     if best-patch = nobody [
       let ahead patch-ahead 1
       if ahead != nobody and [pcolor] of ahead != white [
@@ -176,20 +175,23 @@ to firefighter-move
       ]
     ]
     
-    ;; prioridade 5: patch vizinho seguro
+    ;; prioridade 5: patch vizinho seguro (fallback)
     if best-patch = nobody [
       let safe-neighbors neighbors with [pcolor != white]
-      if any? safe-neighbors [ set best-patch one-of safe-neighbors ]
+      if any? safe-neighbors [
+        set best-patch one-of safe-neighbors
+      ]
     ]
     
-    ;; move-se
+    ;; ---- Executa movimento ----
     if best-patch != nobody [
       face best-patch
       let next-patch patch-ahead 1
-      if next-patch != nobody and [pcolor] of next-patch != white [
+      ifelse next-patch != nobody and [pcolor] of next-patch != white [
         fd 1
+      ][
+        move-to best-patch
       ]
-      [ move-to best-patch ]
     ]
   ]
 end
